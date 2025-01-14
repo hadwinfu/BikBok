@@ -45,6 +45,9 @@
 
 在本项目的前端页面中，始终只有3个frame。其原理是始终让正在观看的frame处于显示区域，并通过移动上下两个frame的位置来实现无限滑动的效果，无需复杂的判断条件。在代码中体现为不断修改`slideList.style.transform`和`slideList.style.top`。
 
+`slideList.style.transform` 负责滑动动画
+`slideList.style.top` 负责高度补偿
+
 骚操作。简单，粗暴。
 
 ## API 说明
