@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import random
 import uuid
 from datetime import datetime, timedelta
@@ -24,7 +25,7 @@ videos = []
 sessions = {}  # {uuid: {"last_active": datetime, "seen_videos": set}}
 
 # 配置：视频目录路径
-VIDEO_DIR = "./uploads"  # 替换为实际路径
+VIDEO_DIR = r"./uploads"  # 替换为实际路径
 
 # 启动时读取指定目录下的所有mp4文件
 @app.on_event("startup")
@@ -32,9 +33,21 @@ def load_videos():
     global videos
     if not os.path.exists(VIDEO_DIR):
         raise FileNotFoundError(f"目录 {VIDEO_DIR} 不存在")
-    videos = [file for file in os.listdir(VIDEO_DIR) if file.endswith(".mp4")]
+    
+    # 定义支持的视频后缀
+    video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # 可根据需求添加更多后缀
+
+    for root, dirs, files in os.walk(VIDEO_DIR):
+        for file in files:
+            if file.lower().endswith(tuple(ext.lower() for ext in video_extensions)):
+                # 拼接文件的相对路径
+                relative_path = os.path.relpath(os.path.join(root, file), VIDEO_DIR)
+                relative_path = Path(relative_path).as_posix()
+                videos.append(relative_path)
+
     if not videos:
         raise FileNotFoundError("视频目录中没有找到任何 mp4 文件")
+
     print(f"已构建服务器视频信息列表，共计{len(videos)}个。")
 
 # 定期清理超过 10 分钟不活跃的用户
