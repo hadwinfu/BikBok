@@ -1,6 +1,7 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BikBok - Infinite swipe short video</title>
     <style>
@@ -10,12 +11,15 @@
             justify-content: center;
             display: flex;
             margin: 0;
+            padding: 0;
             overflow: hidden;
+            height: 100%;
         }
 
         .slide-list {
             display: block;
-            height: 100%;
+            /* height: 100%; */
+            height: calc(var(--vh) * 100);
             width: 50vw;
             transition: transform 0.3s ease;
             /* 添加平滑过渡 */
@@ -88,6 +92,35 @@
                 width: 56.25vh;
             }
         }
+
+        /* 音量按钮样式 */
+        .mute-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: #3d3dc0;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s;
+            z-index: 10;
+        }
+
+        .mute-toggle.muted {
+            background-color: #e95e5e;
+            /* 当静音时按钮为红色 */
+        }
+
+        .mute-icon {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -104,6 +137,9 @@
         </div>
     </div>
     <img src="./play.png" class="play-icon" alt="Play Icon">
+    <div class="mute-toggle" id="muteButton">
+        <span id="muteIcon" class="mute-icon">🔊</span>
+    </div>
     <script>
 
         function showToast(message, position = 'top') {
@@ -176,7 +212,7 @@
             // 如果索引更新后在视频列表范围内，则直接滚动。
             if (vpointer < videoList.length - 1) {
                 vpointer++;
-                console.log(`slideList.style.top = ${slideList.style.top}`);
+
                 updateSlidePosition(vpointer);
                 console.log("当前索引:", vpointer);
                 console.log("当前播放的视频:", videoList[vpointer])
@@ -221,6 +257,7 @@
                     // 设置新的 top 值
                     slideList.style.top = `${newTop}%`;
                 }
+                console.log(`slideList.style.top = ${slideList.style.top}`);
             }
 
         }
@@ -246,7 +283,6 @@
                 firstVideo.currentTime = 0;
                 playVideo(firstVideo);
 
-                console.log(`slideList.style.top = ${slideList.style.top}`);
                 updateSlidePosition(vpointer);
                 console.log("当前索引:", vpointer);
                 console.log("当前播放的视频:", videoList[vpointer])
@@ -263,23 +299,9 @@
                 const newTop = vpointer * 100 - 100;
                 // 设置新的 top 值
                 slideList.style.top = `${newTop}%`;
+                console.log(`slideList.style.top = ${slideList.style.top}`);
             }
         }
-
-        function toggleMute() {
-            const watchingFrame = document.querySelector('.frame.watching');
-            const video = watchingFrame.querySelector('video');
-            if (isMuted) {
-                video.muted = false;
-                isMuted = false;
-                console.log('取消静音');
-            } else {
-                video.muted = true;
-                isMuted = true;
-                console.log('静音');
-            }
-        }
-
 
         function checkPlayIcon() {
             playIcon.style.display = isPaused ? 'block' : 'none';
@@ -380,40 +402,79 @@
         // 缓存 DOM 元素
         const slideList = document.querySelector('.slide-list');
         const playIcon = document.querySelector('.play-icon');
+        const muteButton = document.getElementById('muteButton');
+        const muteIcon = document.getElementById('muteIcon');
+
+        muteButton.addEventListener('click', toggleMute);
+
+        function toggleMute() {
+            const watchingFrame = document.querySelector('.frame.watching');
+            const video = watchingFrame.querySelector('video');
+
+            if (isMuted) {
+                video.muted = false;
+                isMuted = false;
+                muteButton.classList.remove('muted');
+                muteIcon.textContent = '🔊';  // 显示音量图标
+                console.log('取消静音');
+            } else {
+                video.muted = true;
+                isMuted = true;
+                muteButton.classList.add('muted');
+                muteIcon.textContent = '🔇';  // 显示静音图标
+                console.log('静音');
+            }
+        }
 
         function isMobileDevice() {
             return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
         }
 
+        function setViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+
+
         //页面首次加载初始化
         async function initialize() {
+
+
+
+            window.addEventListener('resize', setViewportHeight);
+            setViewportHeight();
+
             await createSession();
             await getVideos();
 
             const watchingFrame = document.querySelector('.frame.watching');
             const video = watchingFrame.querySelector('video');
             video.src = API_BASE_URL + videoList[vpointer];
-            console.log("当前索引:", vpointer);
+            window.console.log("当前索引:", vpointer);
             console.log("当前播放的视频:", videoList[vpointer])
             const slideList = document.querySelector('.slide-list');
             const lastFrame = slideList.lastElementChild;
             const lastVideo = lastFrame.querySelector('video');
             lastVideo.src = API_BASE_URL + videoList[vpointer + 1];
+            playVideo(video);
 
             if (isMobileDevice()) {
+
                 //如果是移动设备访问，则默认取消静音。
-                toggleMute();
-                checkPlayIcon();
+                // toggleMute();
+                //checkPlayIcon();
 
                 // 监听触摸滑动事件
                 let touchStartY = 0;
                 let touchEndY = 0;
 
-                document.querySelector('.slide-list').addEventListener('touchstart', (e) => {
+                document.addEventListener('touchstart', (e) => {
+                    console.log('touchstart', e.touches[0].clientY); // 添加日志
                     touchStartY = e.touches[0].clientY;
                 });
 
-                document.querySelector('.slide-list').addEventListener('touchend', (e) => {
+                document.addEventListener('touchend', (e) => {
+                    console.log('touchend', e.changedTouches[0].clientY);
                     touchEndY = e.changedTouches[0].clientY;
                     if (touchStartY - touchEndY > 50) {
                         nextVideo(); // 向上滑动 - 切换到下一个视频
@@ -423,7 +484,6 @@
                 });
 
             } else {
-                playVideo(video);
 
                 // 监听方向键按下事件
                 document.addEventListener('keydown', (event) => {
@@ -456,6 +516,14 @@
             document.querySelector('.slide-list').addEventListener('click', (event) => {
                 togglePlayPause(); // 调用 togglePlayPause 函数
             });
+
+            if (isMuted) {
+                muteButton.classList.add('muted');
+                muteIcon.textContent = '🔇';
+            } else {
+                muteButton.classList.remove('muted');
+                muteIcon.textContent = '🔊';
+            }
 
         }
 

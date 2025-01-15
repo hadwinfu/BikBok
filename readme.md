@@ -6,10 +6,15 @@
 
 没有点赞，没有评论，没有视频描述，纯粹的浏览。
 
+## Change log
+
+- 2015.1.15
+    1. 现在网页在真实移动设备（iPhone测试通过）上也能正常渲染了，并且上下滑动手势也能正常识别了。
+    2. 由于浏览器策略限制，现在不论什么设备上访问网页将默认静音，添加了静音切换按钮。
 
 ### 已知问题
 
-1. 本项目在Windows上的Chrome、Chrome模拟iPhone、Edge均能正常显示。但是在真实移动设备（iPhone）上，无论我用Safari还是Chrome（ios版）都无法正常显示。不要问我为什么，我也不知道怎么修复。
+1. ~~本项目在Windows上的Chrome、Chrome模拟iPhone、Edge均能正常显示。但是在真实移动设备（iPhone）上，无论我用Safari还是Chrome（ios版）都无法正常显示。不要问我为什么，我也不知道怎么修复。~~
 
 2. 由于本项目没有视频缓冲和视频分片加载特性，因此过大的视频可能会很慢才显示。
 
@@ -94,6 +99,10 @@
    pip install fastapi uvicorn
 ```
 
+2. 配置参数
+    - `index.html` - `const API_BASE_URL = "http://http://127.0.0.1:8000";`
+    - `bikbok-server.py` - `uvicorn.run("__main__:app", host="127.0.0.1", port=8000)`
+
 ## 启动说明
 
 1. 运行后端 API 服务，确保 FastAPI 服务正常启动。
@@ -105,3 +114,4 @@
 
 3. 在浏览器中打开index.html即可体验。
 
+**当uploads文件夹加入新视频时，需重新执行第一步，这样服务端才会重新构建服务器视频信息列表。**
