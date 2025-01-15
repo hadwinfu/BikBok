@@ -27,7 +27,7 @@ sessions = {}  # {uuid: {"last_active": datetime, "seen_videos": set}}
 # 配置：视频目录路径
 VIDEO_DIR = r"./uploads"  # 替换为实际路径
 
-# 启动时读取指定目录下的所有mp4文件
+# 启动时读取指定目录下的所有视频文件
 @app.on_event("startup")
 def load_videos():
     global videos

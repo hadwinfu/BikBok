@@ -22,7 +22,6 @@
 
 - **前端**：HTML5, CSS, JavaScript
 - **后端**：Python(FastAPI)
-- **视频存储**：MP4 格式的视频文件
 
 ## 功能描述
 
