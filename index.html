@@ -231,21 +231,8 @@
                     slideList.style.top = `${newTop}%`;
                 } else {
                     // 不在视频列表内则预加载拉取新视频
-                    if (await getVideos() == 'noMore') {
-                        // 若没有更多视频，也需要移动frame，始终让观看的视频保持在三个frame中间。
-                        const firstFrame = slideList.firstElementChild;
-                        const firstVideo = firstFrame.querySelector('video');
-                        firstVideo.src = API_BASE_URL + videoList[vpointer + 1] || "";
-                        // 将第一个 frame 移动到 slide-list 的末尾
-                        slideList.appendChild(firstFrame);
-                        let currentTop = parseFloat(slideList.style.top);
-                        const newTop = vpointer * 100 - 100;
-                        // 设置新的 top 值
-                        slideList.style.top = `${newTop}%`;
-                        //console.log('没有更多视频了');
-                        return;
-                    }
-
+                    await getVideos();
+                    // 若没有更多视频，也需要移动frame，始终让观看的视频保持在三个frame中间。
                     // 获取第一个 frame
                     const firstFrame = slideList.firstElementChild;
                     const firstVideo = firstFrame.querySelector('video');
