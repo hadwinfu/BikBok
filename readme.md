@@ -100,7 +100,7 @@
 ```
 
 2. 配置参数
-    - `index.html` - `const API_BASE_URL = "http://http://127.0.0.1:8000";`
+    - `index.html` - `const API_BASE_URL = "http://127.0.0.1:8000";`
     - `bikbok-server.py` - `uvicorn.run("__main__:app", host="127.0.0.1", port=8000)`
 
 ## 启动说明
