@@ -100,8 +100,13 @@
 ```
 
 2. 配置参数
-    - `index.html` - `const API_BASE_URL = "http://127.0.0.1:8000";`
-    - `bikbok-server.py` - `uvicorn.run("__main__:app", host="127.0.0.1", port=8000)`
+    
+    ##### `index.html`
+    - `const API_BASE_URL = "http://127.0.0.1:8000";` 请求api的基础地址
+
+    ##### `bikbok-server.py`
+    - `uvicorn.run("__main__:app", host="127.0.0.1", port=8000)` api服务监听的地址
+    - `VIDEO_DIR = "./uploads"` 视频在服务器上存放的位置
 
 ## 启动说明
 
@@ -114,4 +119,4 @@
 
 3. 在浏览器中打开index.html即可体验。
 
-**当uploads文件夹加入新视频时，需重新执行第一步，这样服务端才会重新构建服务器视频信息列表。**
+**当视频文件夹加入新视频或VIDEO_DIR参数被改动时，需重新执行第一步，这样服务端才会重新构建服务器视频信息列表。**
