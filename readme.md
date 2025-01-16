@@ -7,7 +7,7 @@
 没有点赞，没有评论，没有视频描述，纯粹的浏览。
 
 ## Preview
-![Preview](https://i.imgur.com/fGDThum.gif)
+![Preview](https://github.com/hadwinfu/BikBok/blob/main/preview.gif)
 
 ## Change log
 
