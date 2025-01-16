@@ -4,7 +4,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
@@ -35,11 +35,11 @@ def load_videos():
         raise FileNotFoundError(f"目录 {VIDEO_DIR} 不存在")
     
     # 定义支持的视频后缀
-    video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # 可根据需求添加更多后缀
+    # video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # 可根据需求添加更多后缀
 
     for root, dirs, files in os.walk(VIDEO_DIR):
         for file in files:
-            if file.lower().endswith(tuple(ext.lower() for ext in video_extensions)):
+            if file.lower().endswith('.mp4'):
                 # 拼接文件的相对路径
                 relative_path = os.path.relpath(os.path.join(root, file), VIDEO_DIR)
                 relative_path = Path(relative_path).as_posix()
@@ -101,8 +101,56 @@ async def create_session():
     sessions[new_uuid] = {"last_active": datetime.now(), "seen_videos": set()}
     return {"uuid": new_uuid}
 
-# 挂载静态资源目录
-app.mount("/videos", StaticFiles(directory=VIDEO_DIR), name="videos")
+@app.get("/videos/{video_name}")
+async def stream_video(video_name: str, request: Request):
+    video_path = os.path.join(VIDEO_DIR, video_name)
+    print(video_path)
+    
+    # 检查视频文件是否存在
+    if not os.path.exists(video_path):
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    file_size = os.path.getsize(video_path)
+    
+    # 获取 Range 请求头
+    range_header = request.headers.get("Range", None)
+    
+    # 如果没有 Range 请求头，返回完整视频
+    if not range_header:
+        return StreamingResponse(open(video_path, "rb"), media_type="video/mp4", headers={"Accept-Ranges": "bytes"})
+    
+    # 解析 Range 请求头（格式：bytes=start-end）
+    if range_header.startswith("bytes="):
+        byte_range = range_header[6:]
+        start, end = byte_range.split("-")
+        start = int(start)
+        
+        # 如果没有指定 end，设置为文件末尾
+        if not end:
+            end = file_size - 1
+        else:
+            end = int(end)
+
+        # 确保 end 在文件大小范围内
+        if end >= file_size:
+            end = file_size - 1
+        
+        # 打开视频文件，返回文件的指定范围
+        def iter_file():
+            with open(video_path, "rb") as f:
+                f.seek(start)
+                yield f.read(end - start + 1)
+        
+        # 返回部分内容，状态码 206 (Partial Content)
+        return StreamingResponse(iter_file(), media_type="video/mp4", 
+                                 headers={
+                                     "Content-Range": f"bytes {start}-{end}/{file_size}",
+                                     "Accept-Ranges": "bytes"
+                                 },
+                                 status_code=206)
+
+    # 如果 Range 请求头格式错误，抛出异常
+    raise HTTPException(status_code=400, detail="Invalid Range header")
 
 if __name__ == "__main__":
     import uvicorn
