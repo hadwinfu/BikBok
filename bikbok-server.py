@@ -212,6 +212,7 @@ if __name__ == "__main__":
 
     # 配置：视频目录路径
     VIDEO_DIR = Path(args.video_dir)
+    
     PORT = args.port
 
     if not VIDEO_DIR.is_dir():

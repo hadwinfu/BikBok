@@ -281,8 +281,6 @@ function setViewportHeight() {
 //页面首次加载初始化
 async function initialize() {
 
-
-
     window.addEventListener('resize', setViewportHeight);
     setViewportHeight();
 
@@ -301,10 +299,6 @@ async function initialize() {
     playVideo(video);
 
     if (isMobileDevice()) {
-
-        //如果是移动设备访问，则默认取消静音。
-        // toggleMute();
-        //checkPlayIcon();
 
         // 监听触摸滑动事件
         let touchStartY = 0;
