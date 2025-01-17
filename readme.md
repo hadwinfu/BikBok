@@ -119,7 +119,7 @@
 
 ## 部署
 
-1. 将MP4视频文件uploads文件夹内 ，确保它们能通过`http://127.0.0.1:8000/videos/{filename}` 访问。
+1. 将MP4视频文件uploads文件夹内 ，确保它们能通过`http://domain:port/videos/{filename}`访问。
 
 - Tips：如果元数据存储在视频文件开头，播放前的加载时间会更快。
 - 优化：使用 FFmpeg 将元数据移动到文件开头：
