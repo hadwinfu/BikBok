@@ -5,20 +5,12 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
 import threading
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 可以指定具体的前端域名，比如 ["http://localhost:8000"]
-    allow_credentials=True,
-    allow_methods=["*"],  # 允许的 HTTP 方法
-    allow_headers=["*"],  # 允许的请求头
-)
 
 # 全局变量
 videos = []
@@ -27,8 +19,6 @@ sessions = {}  # {uuid: {"last_active": datetime, "seen_videos": set}}
 # 配置：视频目录路径
 VIDEO_DIR = r"./uploads"  # 替换为实际路径
 
-# 启动时读取指定目录下的所有视频文件
-@app.on_event("startup")
 def load_videos():
     global videos
     if not os.path.exists(VIDEO_DIR):
@@ -49,6 +39,19 @@ def load_videos():
         raise FileNotFoundError("视频目录中没有找到任何 mp4 文件")
 
     print(f"已构建服务器视频信息列表，共计{len(videos)}个。")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动时读取指定目录下的所有视频文件
+    load_videos()
+
+    # 应用启动完成
+    yield
+
+    # 在应用关闭时运行的逻辑（如果需要）
+    print("应用已关闭，执行清理操作（如果需要）")
+
+app = FastAPI(lifespan=lifespan)
 
 # 定期清理超过 10 分钟不活跃的用户
 def cleanup_sessions():
@@ -101,7 +104,7 @@ async def create_session():
     sessions[new_uuid] = {"last_active": datetime.now(), "seen_videos": set()}
     return {"uuid": new_uuid}
 
-@app.get("/videos/{video_name}")
+@app.get("/videos/{video_name:path}")
 async def stream_video(video_name: str, request: Request):
     video_path = os.path.join(VIDEO_DIR, video_name)
     print(video_path)
@@ -151,6 +154,14 @@ async def stream_video(video_name: str, request: Request):
 
     # 如果 Range 请求头格式错误，抛出异常
     raise HTTPException(status_code=400, detail="Invalid Range header")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 可以指定具体的前端域名，比如 ["http://localhost:8000"]
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许的 HTTP 方法
+    allow_headers=["*"],  # 允许的请求头
+)
 
 if __name__ == "__main__":
     import uvicorn
