@@ -113,9 +113,9 @@
 - 建议Python版本>=3.10.11
 
 - 安装必要的依赖：
-```bash
-   pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 ## 部署
 
