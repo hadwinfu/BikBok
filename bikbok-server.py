@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # 在应用关闭时运行的逻辑（如果需要）
-    print("应用已关闭，执行清理操作（如果需要）")
+    print("应用已关闭，执行清理操作。")
 
 app = FastAPI(lifespan=lifespan)
 
