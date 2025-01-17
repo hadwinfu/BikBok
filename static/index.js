@@ -234,8 +234,7 @@ async function getVideos() {
     }
 }
 
-
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = window.location.origin;
 
 let videoList = []
 let vpointer = 0; // 当前显示视频的索引

@@ -5,35 +5,38 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
 import threading
+import argparse
 
 
 # 全局变量
 videos = []
 sessions = {}  # {uuid: {"last_active": datetime, "seen_videos": set}}
 
-# 配置：视频目录路径
-VIDEO_DIR = r"./uploads"  # 替换为实际路径
-
 def load_videos():
     global videos
     if not os.path.exists(VIDEO_DIR):
         raise FileNotFoundError(f"目录 {VIDEO_DIR} 不存在")
-    
-    # 定义支持的视频后缀
-    # video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # 可根据需求添加更多后缀
 
-    for root, dirs, files in os.walk(VIDEO_DIR):
-        for file in files:
-            if file.lower().endswith('.mp4'):
-                # 拼接文件的相对路径
-                relative_path = os.path.relpath(os.path.join(root, file), VIDEO_DIR)
-                relative_path = Path(relative_path).as_posix()
-                videos.append(relative_path)
+    # for root, dirs, files in os.walk(VIDEO_DIR):
+    #     for file in files:
+    #         if file.lower().endswith('.mp4'):
+    #             # 拼接文件的相对路径
+    #             relative_path = os.path.relpath(os.path.join(root, file), VIDEO_DIR)
+    #             relative_path = Path(relative_path).as_posix()
+    #             videos.append(relative_path)
+
+
+    for file in VIDEO_DIR.rglob("*.mp4"):
+        if file.suffix.lower() == ".mp4":  # 转为小写后比较
+            relative_path = file.relative_to(VIDEO_DIR).as_posix()
+            videos.append(relative_path)
 
     if not videos:
         raise FileNotFoundError("视频目录中没有找到任何 mp4 文件")
@@ -53,6 +56,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# 挂载静态文件目录
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # 定期清理超过 10 分钟不活跃的用户
 def cleanup_sessions():
     global sessions
@@ -68,6 +74,12 @@ threading.Thread(target=cleanup_sessions, daemon=True).start()
 
 class VideoRequest(BaseModel):
     uuid: str
+
+@app.get("/")
+def read_root():
+    # 返回 HTML 文件
+    return FileResponse("index.html")
+
 
 @app.post("/get-videos")
 async def get_videos(video_request: VideoRequest):
@@ -106,9 +118,13 @@ async def create_session():
 
 @app.get("/videos/{video_name:path}")
 async def stream_video(video_name: str, request: Request):
-    video_path = os.path.join(VIDEO_DIR, video_name)
-    print(video_path)
+
+    video_path = (VIDEO_DIR / video_name).resolve() # 拼接文件的绝对路径
     
+    video_path = video_path.as_posix()
+
+    # print(video_path)
+
     # 检查视频文件是否存在
     if not os.path.exists(video_path):
         raise HTTPException(status_code=404, detail="Video not found")
@@ -155,14 +171,64 @@ async def stream_video(video_name: str, request: Request):
     # 如果 Range 请求头格式错误，抛出异常
     raise HTTPException(status_code=400, detail="Invalid Range header")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 可以指定具体的前端域名，比如 ["http://localhost:8000"]
-    allow_credentials=True,
-    allow_methods=["*"],  # 允许的 HTTP 方法
-    allow_headers=["*"],  # 允许的请求头
-)
+def valid_port(value):
+    """验证端口号是否在合法范围内"""
+    try:
+        port = int(value)
+        if 1 <= port <= 65535:
+            return port
+        else:
+            raise argparse.ArgumentTypeError(f"Port must be in the range 1-65535, got {value}.")
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid port number: {value}.")
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Video Directory and Deployment Mode")
+    parser.add_argument(
+        "-d", "--video-dir", 
+        type=str, 
+        required=True, 
+        help="Path to the video directory."
+    )
+    parser.add_argument(
+        "-m", "--mode", 
+        type=str, 
+        choices=["local", "server"], 
+        required=True, 
+        help="Deployment mode: 'local' or 'server'."
+    )
+    parser.add_argument(
+        "-p", "--port",
+        type=valid_port,  # 自定义端口验证函数
+        default=8000,  # 默认值
+        help="Port number for the server (1-65535). Default is 8000."
+    )
+
+    return parser.parse_args()
 
 if __name__ == "__main__":
+
+    args = parse_arguments()
+
+    # 配置：视频目录路径
+    VIDEO_DIR = Path(args.video_dir)
+    PORT = args.port
+
+    if not VIDEO_DIR.is_dir():
+        raise FileNotFoundError(f"The specified video directory does not exist: {VIDEO_DIR}")
+
     import uvicorn
-    uvicorn.run("__main__:app", host="127.0.0.1", port=8000)
+
+    if args.mode == 'server':
+        uvicorn.run("__main__:app", host="0.0.0.0", port=PORT)
+    elif args.mode == 'local':
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # 可以指定具体的前端域名，比如 ["http://localhost:8000"]
+            allow_credentials=True,
+            allow_methods=["*"],  # 允许的 HTTP 方法
+            allow_headers=["*"],  # 允许的请求头
+        )
+
+        uvicorn.run("__main__:app", host="127.0.0.1", port=PORT)

@@ -4,12 +4,17 @@
 
 **BikBok** 是一个模仿抖音（TikTok）无限滑动浏览视频功能的**Demo**。
 
-没有点赞，没有评论，没有视频描述，纯粹的浏览。
+没有第三方组件，没有点赞，没有评论，没有视频描述，纯粹的浏览。
 
 ## Preview
 ![Preview](https://github.com/hadwinfu/BikBok/blob/main/preview.gif)
 
 ## Change log
+
+- 2025.1.18
+    1. 从前后端分离改为后端渲染返回网页，现在只需要启动后端服务即可。
+    2. 优化了跨平台文件路径的解析。
+    3. 添加了启动参数支持，修改参数更加快捷，部署更方便。
 
 - 2025.1.17
     1. 修复了后端无法正确解析视频路径的bug，该bug曾导致后端无法返回处于子文件夹内的视频（例如/videos/anime/example.mp4）。
@@ -105,28 +110,16 @@
 
 ## 运行环境配置
 
-1. 安装必要的依赖：
+- 建议Python版本>=3.10.11
+
+- 安装必要的依赖：
 ```bash
-   pip install fastapi uvicorn
+   pip install -r requirements.txt
 ```
 
-2. 配置参数
-    
-    ##### `index.html`
-    - `const API_BASE_URL = "http://127.0.0.1:8000";` 请求api的基础地址
+## 部署
 
-    ##### `bikbok-server.py`
-    - `uvicorn.run("__main__:app", host="127.0.0.1", port=8000)` api服务监听的地址
-    - `VIDEO_DIR = "./uploads"` 视频在服务器上存放的位置
-
-## 启动说明
-
-1. 运行后端 API 服务，确保 FastAPI 服务正常启动。
-   ```bash
-   python bikbok-server.py
-   ```
-
-2. 将MP4视频文件uploads文件夹内 ，确保它们能通过`http://127.0.0.1:8000/videos/{filename}` 访问。
+1. 将MP4视频文件uploads文件夹内 ，确保它们能通过`http://127.0.0.1:8000/videos/{filename}` 访问。
 
 - Tips：如果元数据存储在视频文件开头，播放前的加载时间会更快。
 - 优化：使用 FFmpeg 将元数据移动到文件开头：
@@ -134,6 +127,41 @@
     ffmpeg -i input.mp4 -movflags +faststart output.mp4
     ```
 
-3. 在浏览器中打开index.html即可体验。
+2. 运行`bikbok-server.py`
+
+    ```bash
+    python bibok-server.py -d uploads -m local -p 23333
+    ```
+
+3. 在浏览器中打开网址即可体验。
 
 **当视频文件夹加入新视频或VIDEO_DIR参数被改动时，需重新执行第一步，这样服务端才会重新构建服务器视频信息列表。**
+
+## 参数说明
+
+### 1. 视频目录参数
+- **短选项**: `-d`
+- **长选项**: `--video-dir`
+- **是否必需**: 是
+- **描述**: 
+  - 该参数用于设置程序运行所需的视频目录路径。
+
+### 2. 部署模式参数
+- **短选项**: `-m`
+- **长选项**: `--mode`
+- **是否必需**: 是
+- **限制**: 
+  - 可选值为 `'local'` 或 `'server'`。
+- **描述**: 
+  - 设置程序的部署模式。
+  - - `'local'`: 本地部署模式（监听127.0.0.1）。
+  - - `'server'`: 服务器部署模式（监听0.0.0.0）。
+
+### 3. 端口号参数
+- **短选项**: `-p`
+- **长选项**: `--port`
+- **类型**: 自定义验证函数 `valid_port`
+- **默认值**: `8000`
+- **描述**: 
+  - 指定服务器的端口号。
+  - 端口号必须在 `1-65535` 范围内，默认值为 `8000`。
