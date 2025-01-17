@@ -1,0 +1,116 @@
+html,
+body {
+    background-color: #151724;
+    justify-content: center;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+}
+
+.slide-list {
+    display: block;
+    /* height: 100%; */
+    height: calc(var(--vh) * 100);
+    width: 50vw;
+    transition: transform 0.3s ease;
+    /* 添加平滑过渡 */
+    position: relative;
+}
+
+.frame {
+    position: relative;
+    background-color: black;
+}
+
+video {
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+}
+
+/* 添加play按钮样式 */
+.play-icon {
+    display: none;
+    /* 默认隐藏 */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6%;
+    /* 根据视口宽度调整大小 */
+    height: auto;
+    /* 根据宽度等比例调整高度 */
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.toast {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 14px;
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease, top 0.5s ease;
+}
+
+.toast-top {
+    top: 20px;
+    background-color: #ff4c4c;
+}
+
+.toast-bottom {
+    bottom: 20px;
+    background-color: #ff4c4c;
+}
+
+.toast.show {
+    opacity: 1;
+}
+
+/* 针对iPhone 14（屏幕宽度约430px） */
+@media (max-width: 430px) {
+    .play-icon {
+        width: 20vw;
+        /* iPhone 14 屏幕上使用视口宽度的20% */
+    }
+
+    .slide-list {
+        width: 56.25vh;
+    }
+}
+
+/* 音量按钮样式 */
+.mute-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: #3d3dc0;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.3s;
+    z-index: 10;
+}
+
+.mute-toggle.muted {
+    background-color: #e95e5e;
+    /* 当静音时按钮为红色 */
+}
+
+.mute-icon {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+}
