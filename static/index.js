@@ -1,3 +1,42 @@
+let animationFrameId;
+
+function updateProgressBarSmoothly() {
+    const watchingFrame = document.querySelector('.frame.watching');
+    if (!watchingFrame) return;
+
+    const video = watchingFrame.querySelector('video');
+    const progressBar = watchingFrame.querySelector('.progress-bar');
+
+    if (video && progressBar) {
+        const progress = (video.currentTime / video.duration) * 100 || 0;
+        progressBar.style.width = `${progress}%`;
+
+        // 使用 requestAnimationFrame 再次调用
+        animationFrameId = requestAnimationFrame(updateProgressBarSmoothly);
+    }
+}
+
+function startUpdatingProgressBar() {
+    cancelAnimationFrame(animationFrameId); // 确保没有重复的动画帧
+    animationFrameId = requestAnimationFrame(updateProgressBarSmoothly);
+}
+
+function stopUpdatingProgressBar() {
+    cancelAnimationFrame(animationFrameId); // 停止动画帧更新
+}
+
+function addVideoEventListeners(videoElement) {
+    videoElement.addEventListener('play', startUpdatingProgressBar);
+    videoElement.addEventListener('pause', stopUpdatingProgressBar);
+    videoElement.addEventListener('ended', stopUpdatingProgressBar);
+}
+
+function removeVideoEventListeners(videoElement) {
+    videoElement.removeEventListener('play', startUpdatingProgressBar);
+    videoElement.removeEventListener('pause', stopUpdatingProgressBar);
+    videoElement.removeEventListener('ended', stopUpdatingProgressBar);
+}
+
 function showToast(message, position = 'top') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${position}`;
@@ -23,21 +62,21 @@ function updateSlidePosition(index) {
     slideList.style.transform = `translateY(-${index * 100}%)`;
 }
 
-async function playVideo(videoElement) {
-    try {
-        await videoElement.play();
-        isPaused = false;
-        checkPlayIcon();
-    } catch (error) {
-        console.error('视频播放失败:', error);
 
-        // 自定义处理逻辑，例如提示用户
-        if (error.name === 'NotAllowedError') {
-            isPaused = true;
-            checkPlayIcon();
-        }
+function removePlayIcon() {
+    const watchingFrame = document.querySelector('.frame.watching');
+    const playIcon = document.getElementById('play-icon')
+    if (playIcon) {
+        watchingFrame.removeChild(playIcon);
     }
+
 }
+
+async function playVideo(videoElement) {
+    await videoElement.play();
+    isPaused = false;
+}
+
 
 async function nextVideo() {
     if (vpointer == videoList.length - 1) {
@@ -53,7 +92,10 @@ async function nextVideo() {
     const slideList = document.querySelector('.slide-list');
     const watchingFrame = document.querySelector('.frame.watching');
     const video = watchingFrame.querySelector('video');
+    removeVideoEventListeners(video);
+
     video.pause();
+    removePlayIcon();
     watchingFrame.classList.remove('watching');
 
     // 获取最后一个 frame
@@ -62,6 +104,8 @@ async function nextVideo() {
     const lastVideo = lastFrame.querySelector('video');
     lastVideo.muted = isMuted;
     lastVideo.currentTime = 0;
+    addVideoEventListeners(lastVideo);
+    startUpdatingProgressBar();
     playVideo(lastVideo);
 
 
@@ -115,7 +159,9 @@ function prevVideo() {
         const slideList = document.querySelector('.slide-list');
         const watchingFrame = document.querySelector('.frame.watching');
         const video = watchingFrame.querySelector('video');
+        removeVideoEventListeners(video);
         video.pause();
+        removePlayIcon();
         watchingFrame.classList.remove('watching');
 
         // 获取第一个 frame
@@ -124,6 +170,10 @@ function prevVideo() {
         const firstVideo = firstFrame.querySelector('video');
         firstVideo.muted = isMuted;
         firstVideo.currentTime = 0;
+
+        addVideoEventListeners(firstVideo);
+        startUpdatingProgressBar();
+
         playVideo(firstVideo);
 
         updateSlidePosition(vpointer);
@@ -147,7 +197,26 @@ function prevVideo() {
 }
 
 function checkPlayIcon() {
-    playIcon.style.display = isPaused ? 'block' : 'none';
+    const watchingFrame = document.querySelector('.frame.watching');
+    if (isPaused) {
+        // 创建 img 元素
+        const playIcon = document.createElement('img');
+
+        // 设置 img 元素的属性
+        playIcon.src = "static/play.png";
+        playIcon.className = "play-icon";
+        playIcon.id = "play-icon";
+        playIcon.alt = "Play Icon";
+
+        // 将 img 元素插入到 <div> 的首部
+        watchingFrame.insertBefore(playIcon, watchingFrame.firstChild);
+    }
+    else {
+        const playIcon = document.getElementById('play-icon')
+        if (playIcon) {
+            watchingFrame.removeChild(playIcon);
+        }
+    }
 }
 
 function togglePlayPause() {
@@ -239,11 +308,10 @@ const API_BASE_URL = window.location.origin;
 let videoList = []
 let vpointer = 0; // 当前显示视频的索引
 let isMuted = true; // 默认静音
-let isPaused = true; // 默认暂停
+let isPaused = false;
 
 // 缓存 DOM 元素
 const slideList = document.querySelector('.slide-list');
-const playIcon = document.querySelector('.play-icon');
 const muteButton = document.getElementById('muteButton');
 const muteIcon = document.getElementById('muteIcon');
 
@@ -268,9 +336,10 @@ function toggleMute() {
     }
 }
 
-function isMobileDevice() {
-    return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
-}
+// 弃用
+// function isMobileDevice() {
+//     return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+// }
 
 function setViewportHeight() {
     const vh = window.innerHeight * 0.01;
@@ -289,6 +358,7 @@ async function initialize() {
 
     const watchingFrame = document.querySelector('.frame.watching');
     const video = watchingFrame.querySelector('video');
+
     video.src = API_BASE_URL + videoList[vpointer];
     window.console.log("当前索引:", vpointer);
     console.log("当前播放的视频:", videoList[vpointer])
@@ -296,71 +366,278 @@ async function initialize() {
     const lastFrame = slideList.lastElementChild;
     const lastVideo = lastFrame.querySelector('video');
     lastVideo.src = API_BASE_URL + videoList[vpointer + 1];
+    addVideoEventListeners(video); // 添加事件监听
     playVideo(video);
 
-    if (isMobileDevice()) {
 
-        // 监听触摸滑动事件
-        let touchStartY = 0;
-        let touchEndY = 0;
+    // 监听触摸滑动事件
+    let touchStartY = 0;
+    let touchEndY = 0;
 
-        document.addEventListener('touchstart', (e) => {
-            console.log('touchstart', e.touches[0].clientY); // 添加日志
-            touchStartY = e.touches[0].clientY;
-        });
-
-        document.addEventListener('touchend', (e) => {
-            console.log('touchend', e.changedTouches[0].clientY);
-            touchEndY = e.changedTouches[0].clientY;
-            if (touchStartY - touchEndY > 50) {
-                nextVideo(); // 向上滑动 - 切换到下一个视频
-            } else if (touchEndY - touchStartY > 50) {
-                prevVideo(); // 向下滑动 - 切换到上一个视频
-            }
-        });
-
-    } else {
-
-        // 监听方向键按下事件
-        document.addEventListener('keydown', (event) => {
-            if (event.code === "ArrowDown") {
-                // 下箭头 - 切换到下一个视频
-                nextVideo();
-            } else if (event.code === "ArrowUp") {
-                // 上箭头 - 切换到上一个视频
-                prevVideo();
-            } else if (event.code === "KeyM") {
-                toggleMute();
-            } else if (event.code === 'Space') {
-                togglePlayPause();
-            }
-        });
-
-        // 监听滚轮事件
-        document.addEventListener('wheel', (event) => {
-            if (event.deltaY > 0) {
-                // 向下滚动 - 切换到下一个视频
-                nextVideo();
-            } else if (event.deltaY < 0) {
-                // 向上滚动 - 切换到上一个视频
-                prevVideo();
-            }
-        });
-    }
-
-    // 添加点击暂停和播放功能
-    document.querySelector('.slide-list').addEventListener('click', (event) => {
-        togglePlayPause(); // 调用 togglePlayPause 函数
+    document.addEventListener('touchstart', (e) => {
+        console.log('touchstart', e.touches[0].clientY); // 添加日志
+        touchStartY = e.touches[0].clientY;
     });
 
-    if (isMuted) {
-        muteButton.classList.add('muted');
-        muteIcon.textContent = '🔇';
-    } else {
-        muteButton.classList.remove('muted');
-        muteIcon.textContent = '🔊';
-    }
+    document.addEventListener('touchend', (e) => {
+        console.log('touchend', e.changedTouches[0].clientY);
+        touchEndY = e.changedTouches[0].clientY;
+        if (touchStartY - touchEndY > 50) {
+            nextVideo(); // 向上滑动 - 切换到下一个视频
+        } else if (touchEndY - touchStartY > 50) {
+            prevVideo(); // 向下滑动 - 切换到上一个视频
+        }
+    });
+
+
+    // 监听方向键按下事件
+    document.addEventListener('keydown', (event) => {
+        if (event.code === "ArrowDown") {
+            // 下箭头 - 切换到下一个视频
+            nextVideo();
+        } else if (event.code === "ArrowUp") {
+            // 上箭头 - 切换到上一个视频
+            prevVideo();
+        } else if (event.code === "KeyM") {
+            toggleMute();
+        } else if (event.code === 'Space') {
+            togglePlayPause();
+        }
+    });
+
+    // 监听滚轮事件
+    document.addEventListener('wheel', (event) => {
+        if (event.deltaY > 0) {
+            // 向下滚动 - 切换到下一个视频
+            nextVideo();
+        } else if (event.deltaY < 0) {
+            // 向上滚动 - 切换到上一个视频
+            prevVideo();
+        }
+    });
+
+    // 添加点击暂停和播放功能
+    document.querySelectorAll('.frame').forEach(frame => {
+        frame.addEventListener('click', (event) => {
+            // 判断点击位置是否在进度条区域内
+            const progressContainer = frame.querySelector('.progress-container');
+            const isClickOnProgress = progressContainer && event.target === progressContainer;
+            if (!isClickOnProgress) {
+                togglePlayPause(); // 调用 togglePlayPause 函数
+            }
+        });
+    });
+
+    addProgressBarListeners();
 
 }
 
-initialize();
+// 用于存储鼠标或触摸按下的初始位置
+let isDragging = false;
+
+let timeLabel;
+
+// 移动设备专用
+let startX = 0;
+let initialProgress = 0;
+
+function addProgressBarListeners() {
+    const progressContainers = document.querySelectorAll('.progress-container');
+    progressContainers.forEach((progressContainer) => {
+        // 监听鼠标按下或触摸开始事件
+        progressContainer.addEventListener('mousedown', handleProgressBarPress);
+        progressContainer.addEventListener('touchstart', handleProgressBarPress2);
+
+
+        // 监听鼠标移动或触摸移动事件
+        document.addEventListener('mousemove', handleProgressBarDrag);
+        document.addEventListener('touchmove', handleProgressBarDrag2);
+
+        // 监听鼠标松开或触摸结束事件
+        document.addEventListener('mouseup', handleProgressBarRelease);
+        document.addEventListener('touchend', handleProgressBarRelease);
+    });
+}
+
+// 移动设备专用
+function handleProgressBarPress2(e) {
+    e.preventDefault();
+    isDragging = true;
+    const watchingFrame = document.querySelector('.frame.watching');
+    const video = watchingFrame.querySelector('video');
+    const progressBar = watchingFrame.querySelector('.progress-bar');
+    const progressContainer = watchingFrame.querySelector('.progress-container');
+
+    // 创建时间标签
+    timeLabel = document.createElement('div');
+    timeLabel.className = 'time-label';
+    watchingFrame.appendChild(timeLabel);
+
+    // 记录初始位置
+    if (e.type === 'touchstart') {
+        startX = e.touches[0].clientX;
+    } else {
+        startX = e.clientX;
+    }
+
+    const rect = progressContainer.getBoundingClientRect();
+    initialProgress = parseFloat(progressBar.style.width) || 0;
+    stopUpdatingProgressBar();
+    // 更新进度条
+    progressBar.style.width = `${initialProgress}%`;
+
+    // 更新时间标签
+    updateTimeLabel(video, initialProgress);
+
+}
+
+// 移动设备专用
+function handleProgressBarDrag2(e) {
+    if (!isDragging) return;
+    const watchingFrame = document.querySelector('.frame.watching');
+    const video = watchingFrame.querySelector('video');
+    const progressBar = watchingFrame.querySelector('.progress-bar');
+    const progressContainer = watchingFrame.querySelector('.progress-container');
+
+    let currentX;
+    if (e.type === 'touchmove') {
+        currentX = e.touches[0].clientX;
+    } else {
+        currentX = e.clientX;
+    }
+
+    const rect = progressContainer.getBoundingClientRect();
+    const offsetX = currentX - startX;
+    const progressDelta = (offsetX / rect.width) * 100;
+
+    // 计算新的进度
+    let newProgress = initialProgress + progressDelta;
+    newProgress = Math.max(0, Math.min(100, newProgress));
+
+    // 更新进度条的宽度
+    progressBar.style.width = `${newProgress}%`;
+
+    // 更新时间标签
+    updateTimeLabel(video, newProgress);
+}
+
+function handleProgressBarPress(e) {
+    console.log('handleProgressBarPress called');
+    e.preventDefault();
+    isDragging = true;
+    const watchingFrame = document.querySelector('.frame.watching');
+    const video = watchingFrame.querySelector('video');
+    const progressBar = watchingFrame.querySelector('.progress-bar');
+    const progressContainer = watchingFrame.querySelector('.progress-container');
+
+    // 创建时间标签
+    timeLabel = document.createElement('div');
+    timeLabel.className = 'time-label';
+    watchingFrame.appendChild(timeLabel);
+
+    // 计算点击位置对应的进度
+    let clickX;
+    if (e.type === 'touchstart') {
+        clickX = e.touches[0].clientX;
+    } else {
+        clickX = e.clientX;
+    }
+    const rect = progressContainer.getBoundingClientRect();
+    const progress = ((clickX - rect.left) / rect.width) * 100;
+
+
+    stopUpdatingProgressBar();
+
+    // 更新进度条
+    progressBar.style.width = `${progress}%`;
+
+    // 更新时间标签
+    updateTimeLabel(video, progress);
+}
+
+function handleProgressBarDrag(e) {
+    console.log('handleProgressBarDrag called');
+    if (!isDragging) return;
+    const watchingFrame = document.querySelector('.frame.watching');
+    const video = watchingFrame.querySelector('video');
+    const progressBar = watchingFrame.querySelector('.progress-bar');
+    const progressContainer = watchingFrame.querySelector('.progress-container');
+
+    let currentX;
+    if (e.type === 'touchmove') {
+        currentX = e.touches[0].clientX;
+    } else {
+        currentX = e.clientX;
+    }
+
+    const rect = progressContainer.getBoundingClientRect();
+    const progress = ((currentX - rect.left) / rect.width) * 100;
+
+    // 确保进度在 0% 到 100% 之间
+    const newProgress = Math.max(0, Math.min(100, progress));
+
+    // 更新进度条的宽度
+    progressBar.style.width = `${newProgress}%`;
+
+    // 更新时间标签
+    updateTimeLabel(video, newProgress);
+}
+
+function handleProgressBarRelease(e) {
+    console.log('handleProgressBarRelease called');
+    if (!isDragging) return;
+    isDragging = false;
+    const watchingFrame = document.querySelector('.frame.watching');
+    const video = watchingFrame.querySelector('video');
+    const progressBar = watchingFrame.querySelector('.progress-bar');
+
+    // 获取当前进度条的宽度
+    const progress = parseFloat(progressBar.style.width) / 100;
+
+    // 计算视频的新时间
+    const newTime = progress * video.duration;
+
+    // 跳转到新的时间
+    video.currentTime = newTime;
+
+    startUpdatingProgressBar();
+
+    // 删除时间标签
+    if (timeLabel) {
+        timeLabel.parentNode.removeChild(timeLabel);
+        timeLabel = null;
+    }
+}
+
+function updateTimeLabel(video, progress) {
+    const currentTime = (progress / 100) * video.duration;
+    const totalTime = video.duration;
+
+    const formattedCurrentTime = formatTime(currentTime);
+    const formattedTotalTime = formatTime(totalTime);
+
+    timeLabel.textContent = `${formattedCurrentTime} / ${formattedTotalTime}`;
+}
+
+function formatTime(time) {
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = Math.floor(time % 60);
+
+    let formattedTime = '';
+    if (hours > 0) {
+        formattedTime += `${padZero(hours)}:`;
+    }
+    formattedTime += `${padZero(minutes)}:${padZero(seconds)}`;
+
+    return formattedTime;
+}
+
+function padZero(num) {
+    return num.toString().padStart(2, '0');
+}
+
+// 在页面加载完成后添加事件监听器
+document.addEventListener('DOMContentLoaded', () => {
+    initialize();
+});

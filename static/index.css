@@ -7,6 +7,10 @@ body {
     padding: 0;
     overflow: hidden;
     height: 100%;
+    -webkit-user-select: none; /* Safari 和 Chrome */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* Internet Explorer/Edge */
+    user-select: none;         /* 标准语法 */
 }
 
 .slide-list {
@@ -32,13 +36,11 @@ video {
 
 /* 添加play按钮样式 */
 .play-icon {
-    display: none;
-    /* 默认隐藏 */
-    position: fixed;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 6%;
+    width: 5vw;
     /* 根据视口宽度调整大小 */
     height: auto;
     /* 根据宽度等比例调整高度 */
@@ -89,7 +91,7 @@ video {
 /* 音量按钮样式 */
 .mute-toggle {
     position: fixed;
-    bottom: 20px;
+    bottom: 50px;
     right: 20px;
     width: 50px;
     height: 50px;
@@ -105,7 +107,7 @@ video {
 }
 
 .mute-toggle.muted {
-    background-color: #e95e5e;
+    background-color: #fc5ccc;
     /* 当静音时按钮为红色 */
 }
 
@@ -113,4 +115,46 @@ video {
     color: white;
     font-size: 24px;
     font-weight: bold;
+}
+
+
+/* 进度条 */
+.progress-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0%; /* 默认宽度为0 */
+    height: 20px;
+    background-color: #349cd8; /* 进度条颜色 */
+    transition: width 0.05s linear, opacity 0.3s ease; /* 平滑动画 */
+    opacity: 70%;
+}
+
+/* 进度条容器 */
+.progress-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 20px; /* 进度条高度 */
+    background-color: #444; /* 背景色 */
+    z-index: 5;
+    opacity: 70%;
+    cursor: pointer; /* 鼠标指针样式 */
+}
+
+/* 鼠标悬停在 progress-container 上时，改变 progress-bar 的透明度 */
+.progress-container:hover .progress-bar {
+    opacity: 100%;
+}
+
+.time-label {
+    color: white;
+    position: absolute;
+    z-index: 6;
+    left: 50%;
+    bottom: 50px;
+    transform: translateX(-50%);
+    text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black;
+    font-size: 20px;
 }
