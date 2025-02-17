@@ -235,52 +235,18 @@ function togglePlayPause() {
     checkPlayIcon();
 }
 
-
-/**
- * 创建一个新的会话
- * @returns {Promise<string>} 返回新的 UUID，并将其存储到 sessionStorage
- */
-async function createSession() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/create-session`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`创建会话失败: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        console.log(data.uuid);
-
-        // 将 UUID 存储到 sessionStorage
-        sessionStorage.setItem("sessionUUID", data.uuid);
-
-        return data.uuid;
-    } catch (error) {
-        console.error("创建会话时出错:", error);
-        throw error;
-    }
-}
-
 /**
  * 获取推荐视频
  * @returns {Promise<Object>} 返回包含视频列表和消息的对象
  */
 async function getVideos() {
     console.log("正在获取新视频");
-    uuid = sessionStorage.getItem("sessionUUID");
     try {
         const response = await fetch(`${API_BASE_URL}/get-videos`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ uuid }),
+            }
         });
 
         if (!response.ok) {
@@ -314,8 +280,26 @@ let isPaused = false;
 const slideList = document.querySelector('.slide-list');
 const muteButton = document.getElementById('muteButton');
 const muteIcon = document.getElementById('muteIcon');
+const logoutButton = document.getElementById('logoutButton');
 
-muteButton.addEventListener('click', toggleMute);
+async function logout() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/logout`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.status === 200) {
+            window.location.href = "/login";  // 登出成功后跳转到登录页面
+        }
+    } catch (error) {
+        console.log(error);
+    }
+}
 
 function toggleMute() {
     const watchingFrame = document.querySelector('.frame.watching');
@@ -353,7 +337,6 @@ async function initialize() {
     window.addEventListener('resize', setViewportHeight);
     setViewportHeight();
 
-    await createSession();
     await getVideos();
 
     const watchingFrame = document.querySelector('.frame.watching');
@@ -389,6 +372,9 @@ async function initialize() {
         }
     });
 
+    muteButton.addEventListener('click', toggleMute);
+    logoutButton.addEventListener('click', logout);
+
 
     // 监听方向键按下事件
     document.addEventListener('keydown', (event) => {
@@ -419,10 +405,12 @@ async function initialize() {
     // 添加点击暂停和播放功能
     document.querySelectorAll('.frame').forEach(frame => {
         frame.addEventListener('click', (event) => {
-            // 判断点击位置是否在进度条区域内
+            // 判断点击位置是否在进度条区域内或全屏按钮
             const progressContainer = frame.querySelector('.progress-container');
-            const isClickOnProgress = progressContainer && event.target === progressContainer;
-            if (!isClickOnProgress) {
+            const btnFullscreen = frame.querySelector('.btn-fullscreen');
+            const isClickOnProgress = event.target === progressContainer;
+            const isClickOnbtnFullScreen = event.target === btnFullscreen;
+            if (!(isClickOnProgress || isClickOnbtnFullScreen)) {
                 togglePlayPause(); // 调用 togglePlayPause 函数
             }
         });

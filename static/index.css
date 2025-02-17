@@ -1,6 +1,6 @@
 html,
 body {
-    background-color: #151724;
+    background: linear-gradient(135deg, #667eea, #764ba2);
     justify-content: center;
     display: flex;
     margin: 0;
@@ -86,37 +86,60 @@ video {
     .slide-list {
         width: 56.25vh;
     }
+
+    .btn-fullscreen {
+        position: absolute;
+        bottom: 30%;
+        left: 50%;
+        transform: translate(-50%);
+        /* 根据宽度等比例调整高度 */
+        z-index: 20;
+        color: white;
+        /* 内边距，增加按钮内部空间 */
+        padding: 5px 10px;
+        /* 白色圆角边框 */
+        border: 2px solid white;
+        /* 圆角半径 */
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgb(245 245 245 / 62%)
+    }
 }
 
-/* 音量按钮样式 */
-.mute-toggle {
+/* 基本按钮样式 */
+.circleButton {
     position: fixed;
-    bottom: 50px;
-    right: 20px;
     width: 50px;
     height: 50px;
-    background-color: #3d3dc0;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    transition: background-color 0.3s;
     z-index: 10;
+    font-size: 24px;
+}
+
+/* 登出按钮样式 */
+.logoutButton {
+    bottom: 50px;
+    right: 20px;
+    background-color: rgb(255, 255, 255);
+    transition: background-color 0.3s;
+}
+
+/* 音量按钮样式 */
+.mute-toggle {
+    bottom: 120px;
+    right: 20px;
+    background-color: #3d3dc0;
+    transition: background-color 0.3s;
 }
 
 .mute-toggle.muted {
     background-color: #fc5ccc;
     /* 当静音时按钮为红色 */
 }
-
-.mute-icon {
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-}
-
 
 /* 进度条 */
 .progress-bar {

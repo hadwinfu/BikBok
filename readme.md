@@ -7,9 +7,14 @@
 没有第三方组件，没有点赞，没有评论，没有视频描述，纯粹的浏览。
 
 ## Preview
-![Preview](https://github.com/hadwinfu/BikBok/blob/main/preview.gif)
+![login](https://github.com/hadwinfu/BikBok/blob/main/login.png)
+![main](https://github.com/hadwinfu/BikBok/blob/main/main.png)
 
 ## Change log
+
+- 2025.2.18
+    1. 增加了简易的多用户登录功能，可在程序目录下的users.json中配置。（至于我为什么不使用数据库，因为我喜欢开箱即用的东西，不喜欢安装各种东西）
+    2. 优化了css样式。
 
 - 2025.1.24
     1. 优化js代码逻辑，现在不再根据User-agent监听热键，因为iPad会伪装成PC。
@@ -132,13 +137,28 @@
     ffmpeg -i input.mp4 -movflags +faststart output.mp4
     ```
 
-2. 运行`bikbok-server.py`
+2. 修改`users.json`，增加或删除用户。
+
+```json
+[
+    {
+        "username": "admin",
+        "password": "123456"
+    },
+    {
+        "username": "steven",
+        "password": "9527"
+    }
+]
+
+```
+3. 运行`bikbok-server.py`
 
     ```bash
     python bibok-server.py -d video_dir -m local -p 23333
     ```
 
-3. 在浏览器中打开网址即可体验。
+4. 在浏览器中打开网址即可体验。
 
 **当视频文件夹加入新视频或VIDEO_DIR参数被改动时，需重新执行第一步，这样服务端才会重新构建服务器视频信息列表。**
 

@@ -2,7 +2,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>BikBok - Infinite swipe short video</title>
     <link rel="stylesheet" href="static/index.css">
 </head>
@@ -28,8 +28,11 @@
             </div>
         </div>
     </div>
-    <div class="mute-toggle muted" id="muteButton">
-        <span id="muteIcon" class="mute-icon">🔇</span>
+    <div class="circleButton mute-toggle muted" id="muteButton">
+        <span id="muteIcon">🔇</span>
+    </div>
+    <div class="circleButton logoutButton" id="logoutButton">
+        <span class="logout-icon">↪</span>
     </div>
     <script src="static/index.js"></script>
 </body>

@@ -3,9 +3,8 @@ from pathlib import Path
 import random
 import uuid
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, Depends, Cookie, Response
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,25 +12,20 @@ from typing import List, Optional
 from pydantic import BaseModel
 import threading
 import argparse
+import json
+import sys
 
+
+users_db = set()
 
 # 全局变量
 videos = []
-sessions = {}  # {uuid: {"last_active": datetime, "seen_videos": set}}
+sessions = {}  # {session_id: {"last_active": datetime, "seen_videos": set}}
 
 def load_videos():
     global videos
     if not os.path.exists(VIDEO_DIR):
         raise FileNotFoundError(f"目录 {VIDEO_DIR} 不存在")
-
-    # for root, dirs, files in os.walk(VIDEO_DIR):
-    #     for file in files:
-    #         if file.lower().endswith('.mp4'):
-    #             # 拼接文件的相对路径
-    #             relative_path = os.path.relpath(os.path.join(root, file), VIDEO_DIR)
-    #             relative_path = Path(relative_path).as_posix()
-    #             videos.append(relative_path)
-
 
     for file in VIDEO_DIR.rglob("*.mp4"):
         if file.suffix.lower() == ".mp4":  # 转为小写后比较
@@ -43,8 +37,24 @@ def load_videos():
 
     print(f"已构建服务器视频信息列表，共计{len(videos)}个。")
 
+# 从 users.json 文件中读取用户数据
+def load_users():
+    global users_db
+    try:
+        print("正在读取用户配置文件")
+        with open('users.json', 'r', encoding='utf-8') as file:
+            users_db = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"读取 users.json 时发生错误: {e}")
+        sys.exit(1)  # 出错时终止程序
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    # 启动时读取用户配置文件
+    load_users()
+    print(users_db)
+
     # 启动时读取指定目录下的所有视频文件
     load_videos()
 
@@ -56,45 +66,105 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+class User(BaseModel):
+    username: str
+    password: str
+
+def authenticate_user(username: str, password: str):
+    # 遍历 users_db 元组，找到匹配的用户
+    for user in users_db:
+        if user["username"] == username and user["password"] == password:
+            return user
+    return None
+
+# 登录接口
+@app.post("/login")
+async def login(user: User, response: Response):
+    # 验证用户名和密码
+    if authenticate_user(user.username, user.password):
+            new_session_id = create_session()
+            response.set_cookie(
+            key="session_id", 
+            value=new_session_id, 
+            max_age=60 * 60 * 24 * 365,  # 设置 cookie 有效期为一年
+            httponly=True,                # 确保客户端 JavaScript 无法访问 cookie
+            secure=False,                  # 在 HTTPS 上才使用此 cookie
+            samesite="Strict"             # 防止 CSRF 攻击
+        )
+            print(f"用户 {user.username} 登录成功！")
+            return {"message": "success", "session_id": new_session_id, "username": user.username}
+
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
 # 挂载静态文件目录
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+def get_current_session(session_id: str = Cookie(None)):
+    # 验证 session_id 是否有效
+    if sessions.get(session_id) is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired session_id"
+        )
+    return session_id
+
+# 登出接口
+@app.post("/logout")
+async def logout(response: Response, session_id: str = Depends(get_current_session)):
+    if sessions.pop(session_id):
+        print(f"会话 {session_id} 已注销！")
+        response.delete_cookie("session_id")
+        return {"message": "success"}
 
 # 定期清理超过 10 分钟不活跃的用户
 def cleanup_sessions():
     global sessions
     while True:
         now = datetime.now()
-        inactive_users = [uuid for uuid, session in sessions.items() if now - session["last_active"] > timedelta(minutes=10)]
-        for uuid in inactive_users:
-            print(f"会话 {uuid} 超过10分钟未活跃，已销毁。")
-            del sessions[uuid]
+        inactive_users = [session_id for session_id, session in sessions.items() if now - session["last_active"] > timedelta(minutes=10)]
+        for session_id in inactive_users:
+            print(f"会话 {session_id} 超过10分钟未活跃，已销毁。")
+            del sessions[session_id]
         threading.Event().wait(60)  # 每 60 秒检查一次
 
 threading.Thread(target=cleanup_sessions, daemon=True).start()
 
-class VideoRequest(BaseModel):
-    uuid: str
-
 @app.get("/")
-def read_root():
-    # 返回 HTML 文件
-    return FileResponse("index.html")
+async def main_page(session_id: str = Cookie(None)):
+    current_session = sessions.get(session_id)
+    
+    if current_session is None:
+        return RedirectResponse(url="/login")
+    
+    # 更新用户最后活跃时间
+    current_session["last_active"] = datetime.now()
+    # 当同一个用户刷新主页面时清空已看视频
+    current_session["seen_videos"].clear()
 
+    headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+
+    return FileResponse("index.html", headers=headers)
+
+@app.get("/login")
+async def login_page():
+    return FileResponse("login.html")
+
+def updateLastActive(session_id):
+    sessions[session_id]["last_active"] = datetime.now()
 
 @app.post("/get-videos")
-async def get_videos(video_request: VideoRequest):
-    global sessions
-
-    # 验证 UUID
-    if video_request.uuid not in sessions:
-        raise HTTPException(status_code=400, detail="Invalid UUID")
+async def get_videos(session_id: str = Depends(get_current_session)):
 
     # 更新用户最后活跃时间
-    session = sessions[video_request.uuid]
-    session["last_active"] = datetime.now()
+    updateLastActive(session_id)
 
     # 计算未观看的视频
-    seen_videos = session["seen_videos"]
+    seen_videos = sessions[session_id]["seen_videos"]
     remaining_videos = list(set(videos) - seen_videos)
 
     if not remaining_videos:
@@ -102,19 +172,18 @@ async def get_videos(video_request: VideoRequest):
 
     # 随机选择最多三个视频
     returned_videos = random.sample(remaining_videos, min(3, len(remaining_videos)))
-    session["seen_videos"].update(returned_videos)
+    sessions[session_id]["seen_videos"].update(returned_videos)
 
     # 构造包含静态文件路径的视频信息
     video_paths = [f"/videos/{video}" for video in returned_videos]
     
     return {"videos": video_paths, "message": "success"}
 
-@app.post("/create-session")
-async def create_session():
-    # 分配新 UUID
-    new_uuid = str(uuid.uuid4())
-    sessions[new_uuid] = {"last_active": datetime.now(), "seen_videos": set()}
-    return {"uuid": new_uuid}
+def create_session():
+    # 分配新 session_id
+    new_session_id = str(uuid.uuid4())
+    sessions[new_session_id] = {"last_active": datetime.now(), "seen_videos": set()}
+    return new_session_id
 
 @app.get("/videos/{video_name:path}")
 async def stream_video(video_name: str, request: Request):
