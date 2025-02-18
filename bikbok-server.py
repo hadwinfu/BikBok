@@ -4,7 +4,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Request, Depends, Cookie, Response
-from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,14 @@ import threading
 import argparse
 import json
 import sys
+import httpx
+import asyncio
 
+# 第三方视频源
+remote_video_api = "https://www.onexiaolaji.cn/RandomPicture/api/api-video.php"
+
+# 是否使用第三方视频源，false为使用本地视频源。
+use_remote_videos = True
 
 users_db = set()
 
@@ -22,7 +29,32 @@ users_db = set()
 videos = []
 sessions = {}  # {session_id: {"last_active": datetime, "seen_videos": set}}
 
+# 创建一个异步函数来获取单个视频 URL
+async def fetch_video_url(client):
+    response = await client.get(remote_video_api)
+    result = response.json()
+    return result['raw_url']
+
+async def get_remote_videos(num: int):
+    # # 创建异步客户端请求
+    # async with httpx.AsyncClient() as client:
+    #     resp = await client.get(remote_video_api)
+    # # 返回目标服务器的响应
+    # result = resp.json()
+    # print(result)
+    # return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+    async with httpx.AsyncClient() as client:
+        # 使用列表生成式并发请求获取多个视频 URL
+        video_urls = await asyncio.gather(
+            *[fetch_video_url(client) for _ in range(num)]
+        )
+
+    # 返回获取到的视频 URL
+    return video_urls
+
 def load_videos():
+    print("正在扫描本地视频目录...")
     global videos
     if not os.path.exists(VIDEO_DIR):
         raise FileNotFoundError(f"目录 {VIDEO_DIR} 不存在")
@@ -53,10 +85,10 @@ async def lifespan(app: FastAPI):
 
     # 启动时读取用户配置文件
     load_users()
-    print(users_db)
 
-    # 启动时读取指定目录下的所有视频文件
-    load_videos()
+    if use_remote_videos == False:
+        # 启动时读取指定目录下的所有视频文件
+        load_videos()
 
     # 应用启动完成
     yield
@@ -158,10 +190,18 @@ def updateLastActive(session_id):
     sessions[session_id]["last_active"] = datetime.now()
 
 @app.post("/get-videos")
-async def get_videos(session_id: str = Depends(get_current_session)):
-
+async def get_videos(request: Request, session_id: str = Depends(get_current_session)):
     # 更新用户最后活跃时间
     updateLastActive(session_id)
+
+    if use_remote_videos:
+        video_paths = await get_remote_videos(3)
+        if len(video_paths) != 0:
+            return {"videos": video_paths, "message": "success"}
+        else:
+            return {"message": "noMore"}
+
+    origin = request.headers.get('Origin')
 
     # 计算未观看的视频
     seen_videos = sessions[session_id]["seen_videos"]
@@ -175,7 +215,7 @@ async def get_videos(session_id: str = Depends(get_current_session)):
     sessions[session_id]["seen_videos"].update(returned_videos)
 
     # 构造包含静态文件路径的视频信息
-    video_paths = [f"/videos/{video}" for video in returned_videos]
+    video_paths = [f"{origin}/videos/{video}" for video in returned_videos]
     
     return {"videos": video_paths, "message": "success"}
 
@@ -256,7 +296,7 @@ def parse_arguments():
     parser.add_argument(
         "-d", "--video-dir", 
         type=str, 
-        required=True, 
+        default=None, 
         help="Path to the video directory."
     )
     parser.add_argument(
@@ -279,13 +319,16 @@ if __name__ == "__main__":
 
     args = parse_arguments()
 
-    # 配置：视频目录路径
-    VIDEO_DIR = Path(args.video_dir)
-    
-    PORT = args.port
+    if args.video_dir:
+        # 配置：视频目录路径
+        VIDEO_DIR = Path(args.video_dir)
+        if not VIDEO_DIR.is_dir():
+            raise FileNotFoundError(f"The specified video directory does not exist: {VIDEO_DIR}")
+        use_remote_videos = False
+    else:
+        print("未设置本地视频目录，将使用远程视频源")
 
-    if not VIDEO_DIR.is_dir():
-        raise FileNotFoundError(f"The specified video directory does not exist: {VIDEO_DIR}")
+    PORT = args.port
 
     import uvicorn
 

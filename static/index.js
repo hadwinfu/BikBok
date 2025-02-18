@@ -106,6 +106,7 @@ async function nextVideo() {
     lastVideo.currentTime = 0;
     addVideoEventListeners(lastVideo);
     startUpdatingProgressBar();
+    setupVideoBufferListener();
     playVideo(lastVideo);
 
 
@@ -122,7 +123,7 @@ async function nextVideo() {
             // 获取第一个 frame
             const firstFrame = slideList.firstElementChild;
             const firstVideo = firstFrame.querySelector('video');
-            firstVideo.src = API_BASE_URL + videoList[vpointer + 1] || "";
+            firstVideo.src = videoList[vpointer + 1] || "";
             // 将第一个 frame 移动到 slide-list 的末尾
             slideList.appendChild(firstFrame);
             let currentTop = parseFloat(slideList.style.top);
@@ -136,7 +137,7 @@ async function nextVideo() {
             // 获取第一个 frame
             const firstFrame = slideList.firstElementChild;
             const firstVideo = firstFrame.querySelector('video');
-            firstVideo.src = API_BASE_URL + videoList[vpointer + 1] || "";
+            firstVideo.src = videoList[vpointer + 1] || "";
             // 将第一个 frame 移动到 slide-list 的末尾
             slideList.appendChild(firstFrame);
             let currentTop = parseFloat(slideList.style.top);
@@ -185,7 +186,7 @@ function prevVideo() {
         const lastVideo = lastFrame.querySelector('video');
 
         // 避免用户再次上滑时索引为-1浏览器报错，可替换为空字符串。
-        lastVideo.src = API_BASE_URL + videoList[vpointer - 1] || "";
+        lastVideo.src = videoList[vpointer - 1] || "";
         // 将最后一个 frame 移动到第一个 frame 前
         slideList.insertBefore(lastFrame, firstFrame);
         let currentTop = parseFloat(slideList.style.top);
@@ -331,6 +332,31 @@ function setViewportHeight() {
 }
 
 
+// 函数：更新并监听当前的 video 元素
+function setupVideoBufferListener() {
+    // 查找当前具有 class="frame watching" 的 div
+    const watchingFrame = document.querySelector('.frame.watching');
+    const loading = watchingFrame.querySelector('#loading');
+    
+    if (!watchingFrame) return; // 如果没有找到，退出
+
+    // 获取其中的 video 元素
+    const videoElement = watchingFrame.querySelector('video');
+    
+    // 如果没有找到 video 元素，退出
+    if (!videoElement) return;
+
+    // 监听 waiting 事件
+    videoElement.addEventListener('waiting', () => {
+        loading.style.display = 'flex';
+    });
+
+    // 监听 canplay 事件
+    videoElement.addEventListener('canplay', () => {
+        loading.style.display = 'none';
+    });
+}
+
 //页面首次加载初始化
 async function initialize() {
 
@@ -342,14 +368,16 @@ async function initialize() {
     const watchingFrame = document.querySelector('.frame.watching');
     const video = watchingFrame.querySelector('video');
 
-    video.src = API_BASE_URL + videoList[vpointer];
+    video.src = videoList[vpointer];
     window.console.log("当前索引:", vpointer);
     console.log("当前播放的视频:", videoList[vpointer])
     const slideList = document.querySelector('.slide-list');
     const lastFrame = slideList.lastElementChild;
     const lastVideo = lastFrame.querySelector('video');
-    lastVideo.src = API_BASE_URL + videoList[vpointer + 1];
+    lastVideo.src = videoList[vpointer + 1];
     addVideoEventListeners(video); // 添加事件监听
+    // 在页面加载时，初始化监听视频缓冲状态
+    setupVideoBufferListener();
     playVideo(video);
 
 
@@ -415,6 +443,8 @@ async function initialize() {
             }
         });
     });
+
+    
 
     addProgressBarListeners();
 
