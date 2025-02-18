@@ -25,7 +25,7 @@ body {
 
 .frame {
     position: relative;
-    background-color: black;
+    background-color: rgb(0, 0, 0);
 }
 
 video {
@@ -183,7 +183,7 @@ video {
 }
 
 #loading {
-    display: flex;
+    display: none;
     position: absolute;
     top: 50%;
     left: 50%;
