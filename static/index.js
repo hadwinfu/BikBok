@@ -106,7 +106,7 @@ async function nextVideo() {
     lastVideo.currentTime = 0;
     addVideoEventListeners(lastVideo);
     startUpdatingProgressBar();
-    setupVideoBufferListener();
+    
     playVideo(lastVideo);
 
 
@@ -146,6 +146,7 @@ async function nextVideo() {
             slideList.style.top = `${newTop}%`;
         }
         console.log(`slideList.style.top = ${slideList.style.top}`);
+        setupVideoBufferListener();
     }
 
 }
@@ -194,6 +195,8 @@ function prevVideo() {
         // 设置新的 top 值
         slideList.style.top = `${newTop}%`;
         console.log(`slideList.style.top = ${slideList.style.top}`);
+
+        setupVideoBufferListener();
     }
 }
 
