@@ -37,10 +37,23 @@ function removeVideoEventListeners(videoElement) {
     videoElement.removeEventListener('ended', stopUpdatingProgressBar);
 }
 
+
+const shownMessages = new Set();
+
 function showToast(message, position = 'top') {
+
+    // 如果消息已经显示过，则不再弹出
+    if (shownMessages.has(message)) {
+        return;
+    }
+
+    // 将消息加入到已显示的集合中
+    shownMessages.add(message);
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${position}`;
-    toast.textContent = message;
+    // toast.textContent = message;
+    toast.innerHTML = message;
     document.body.appendChild(toast);
 
     // 强制触发重绘以激活动画
@@ -48,13 +61,15 @@ function showToast(message, position = 'top') {
         toast.classList.add('show');
     });
 
-    // 3秒后移除提示
+    // 1秒后移除提示
     setTimeout(() => {
         toast.classList.remove('show');
-        toast.style[position] = '-50px'; // 向上或向下移动提示框
+        toast.style[position] = '-20px'; // 向上或向下移动提示框
         setTimeout(() => {
             document.body.removeChild(toast);
         }, 500); // 等待动画完成
+        // 从已显示的集合中移除该消息，允许再次显示
+        shownMessages.delete(message);
     }, 1000);
 }
 
@@ -254,7 +269,18 @@ async function getVideos() {
         });
 
         if (!response.ok) {
-            throw new Error(`获取视频失败: ${response.statusText}`);
+            if (response.status == 401) {
+                showToast('用户长时间未活动<br>请重新登录！', 'bottom');
+
+                // 等待提示消失后跳转到登录页面
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000); // 2秒后跳转，确保提示消失
+
+                throw new Error('会话失效，跳转到登录页面');
+            } else {
+                throw new Error(response.statusText);
+            }
         }
 
         const data = await response.json();
