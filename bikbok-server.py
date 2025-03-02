@@ -180,11 +180,11 @@ async def main_page(session_id: str = Cookie(None)):
         "Expires": "0"
     }
 
-    return FileResponse("index.html", headers=headers)
+    return FileResponse(os.path.join("static", "index.html"), headers=headers)
 
 @app.get("/login")
 async def login_page():
-    return FileResponse("login.html")
+    return FileResponse(os.path.join("static", "login.html"))
 
 def updateLastActive(session_id):
     sessions[session_id]["last_active"] = datetime.now()
