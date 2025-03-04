@@ -9,6 +9,7 @@ function updateProgressBarSmoothly() {
 
     if (video && progressBar) {
         const progress = (video.currentTime / video.duration) * 100 || 0;
+        console.log(progress);
         progressBar.style.width = `${progress}%`;
 
         // 使用 requestAnimationFrame 再次调用
@@ -107,9 +108,8 @@ async function nextVideo() {
     const slideList = document.querySelector('.slide-list');
     const watchingFrame = document.querySelector('.frame.watching');
     const video = watchingFrame.querySelector('video');
-    removeVideoEventListeners(video);
-
     video.pause();
+    removeVideoEventListeners(video);
     removePlayIcon();
     watchingFrame.classList.remove('watching');
 
@@ -120,7 +120,7 @@ async function nextVideo() {
     lastVideo.muted = isMuted;
     lastVideo.currentTime = 0;
     addVideoEventListeners(lastVideo);
-    startUpdatingProgressBar();
+    //startUpdatingProgressBar();
     
     playVideo(lastVideo);
 
@@ -176,8 +176,8 @@ function prevVideo() {
         const slideList = document.querySelector('.slide-list');
         const watchingFrame = document.querySelector('.frame.watching');
         const video = watchingFrame.querySelector('video');
-        removeVideoEventListeners(video);
         video.pause();
+        removeVideoEventListeners(video);
         removePlayIcon();
         watchingFrame.classList.remove('watching');
 
@@ -189,7 +189,7 @@ function prevVideo() {
         firstVideo.currentTime = 0;
 
         addVideoEventListeners(firstVideo);
-        startUpdatingProgressBar();
+        //startUpdatingProgressBar();
 
         playVideo(firstVideo);
 
@@ -507,6 +507,8 @@ function addProgressBarListeners() {
 
 // 移动设备专用
 function handleProgressBarPress2(e) {
+    console.log('handleProgressBarPress2 called');
+    stopUpdatingProgressBar();
     e.preventDefault();
     isDragging = true;
     const watchingFrame = document.querySelector('.frame.watching');
@@ -539,6 +541,7 @@ function handleProgressBarPress2(e) {
 
 // 移动设备专用
 function handleProgressBarDrag2(e) {
+    console.log('handleProgressBarDrag2 called');
     if (!isDragging) return;
     const watchingFrame = document.querySelector('.frame.watching');
     const video = watchingFrame.querySelector('video');
@@ -568,6 +571,7 @@ function handleProgressBarDrag2(e) {
 }
 
 function handleProgressBarPress(e) {
+    stopUpdatingProgressBar();
     console.log('handleProgressBarPress called');
     e.preventDefault();
     isDragging = true;
@@ -590,9 +594,6 @@ function handleProgressBarPress(e) {
     }
     const rect = progressContainer.getBoundingClientRect();
     const progress = ((clickX - rect.left) / rect.width) * 100;
-
-
-    stopUpdatingProgressBar();
 
     // 更新进度条
     progressBar.style.width = `${progress}%`;

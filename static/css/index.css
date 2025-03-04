@@ -16,9 +16,9 @@ body {
 .slide-list {
     display: block;
     /* height: 100%; */
-    height: calc(var(--vh) * 100);
+    height: calc(var(--vh, 1vh) * 100);
     width: 50vw;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease-out;
     /* 添加平滑过渡 */
     position: relative;
 }
